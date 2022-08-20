@@ -1,0 +1,10 @@
+artifacts
+cache
+node_modules
+.env
+.idea
+coverage
+coverage.json
+typechain
+typechain-types
+
