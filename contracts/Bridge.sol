@@ -8,53 +8,29 @@ import "./ERC20.sol";
 
 contract Bridge {
 
-    //подпись проходоит через пользователя, алгоритм писать не нужно
-    //signature = address, amount, nonce, chainId
-    //реализовать добавление/удаление нового токена
-    //реализовать работу моста с разными сетями по chain_id
-    //хэширование должно проходить еще по олному дополнительному элементу, по адресу сети
-    //нужно записать заранее адрес валидатора, чтобы проверить сигнатуру
-    //нужно будет хранить хэш в мапе, чтобы проверять, что по данной сигнатуре было или не было обращение. из-за этого нужно добавлять none(current timestamp)
-
-    mapping(address => ERC20) private _tokens;
-    mapping(bytes32 => uint256) _hashMessages;
+    ERC20 private immutable _token;
     address private immutable _validator;
+
+    mapping(bytes32 => uint256) _hashMessages;
 
     event swapInitialized(address indexed from, address indexed spender, uint256 amount);
 
-    constructor(address validator_) {
+    constructor(address tokenAddress_, address validator_) {
         _validator = validator_;
+        _token = ERC20(tokenAddress_);
     }
 
-    function addToken(address tokenAddress) public {
-        ERC20 token = ERC20(tokenAddress);
-        _tokens[tokenAddress] = token;
-    }
-
-    function removeToken(address token) public {
-        delete _tokens[token];
-    }
-
-    function addNetwork(uint256 chainId) public {
-
-    }
-
-    function removeNetwork(uint256 chainId) public {
-
-    }
-
-    function swap(address tokenAddress, address sender, uint256 amount) public {
-        ERC20 token = _tokens[tokenAddress];
-        token.burn(amount);
+    function swap(address sender, uint256 amount, uint256 chainId) public {
+        //        как указать в какую имееено сеть отправить
+        _token.burn(amount);
         emit swapInitialized(msg.sender, sender, amount);
     }
 
-    function redeem(address tokenAddress, address recipient, uint256 amount, uint256 chainId, uint256 nonce,
+    function redeem(address recipient, uint256 amount, uint256 chainId, uint256 nonce,
         uint8 v, bytes32 r, bytes32 s) public {
 
-        ERC20 token = _tokens[tokenAddress];
         if (_checkSign(recipient, amount, chainId, nonce, v, r, s)) {
-            token.mint(amount);
+            _token.mint(amount);
         }
     }
 
@@ -65,9 +41,9 @@ contract Bridge {
             abi.encodePacked(recipient, amount, chainId, nonce)
         );
 
-        bytes32 hashMsg = hashMessage(digest);
+        bytes32 hashMsg = _hashMessage(digest);
         uint256 count = _hashMessages[hashMsg];
-        if (count != 0) {
+        if (count == 0) {
             address addr = ECDSA.recover(hashMsg, v, r, s);
             return addr == _validator;
         } else {
@@ -76,7 +52,7 @@ contract Bridge {
         }
     }
 
-    function hashMessage(bytes32 message) private pure returns (bytes32) {
+    function _hashMessage(bytes32 message) private pure returns (bytes32) {
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
         return keccak256(abi.encodePacked(prefix, message));
     }

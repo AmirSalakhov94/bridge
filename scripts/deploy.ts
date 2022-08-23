@@ -11,7 +11,7 @@ async function main() {
 
     const [owner] = await ethers.getSigners();
 
-    const tokenFactoryStaking = await ethers.getContractFactory("Staking");
+    const tokenFactoryStaking = await ethers.getContractFactory("Bridge");
     const tokenStaking = await tokenFactoryStaking.deploy(tokenErc20LP.address, tokenErc20.address, owner.address);
     console.log("Token staking address:", tokenStaking.address);
 }
